@@ -242,3 +242,25 @@ tabela_horas_RPA2$`HORAS NA RPA` <- as.numeric(as.character(tabela_horas_RPA2$`H
 tabela_horas_RPA2$ASA <- as.numeric(as.character(tabela_horas_RPA2$ASA))
 
 cor.test(tabela_horas_RPA2$`HORAS NA RPA`, tabela_horas_RPA2$ASA, method = "spearman", exact = F)
+
+## Desfecho X ASA:
+
+tabela_desfecho <- dados %>%
+  group_by(`DESFECHOS (APENAS SE POSITIVOS)`, ASA) %>%
+  summarise(freq = n()) %>%
+  mutate(
+    freq_relativa = freq %>% percent()
+  )
+
+
+## Desfecho X Tipo de Anestesia
+
+tabela_anestesia <- dados %>%
+  group_by(`DESFECHOS (APENAS SE POSITIVOS)`, ANESTESIA) %>%
+  summarise(freq = n()) %>%
+  mutate(
+    freq_relativa = freq %>% percent()
+  )
+
+
+## Idade X Comorbidade
