@@ -212,5 +212,51 @@ ggplot(cirur_anes) +
   coord_flip()
 ggsave(filename = file.path(caminho_ana, "anaste_cirur.pdf"), width = 158, height = 93, units = "mm")
 
+# Desfecho X Asa
 
+desfecho_asa <- banco_LASOS2[, c(14,25)]
+
+colnames(desfecho_asa) <- c('Asa', 'desfecho')
+
+
+desfecho_asa <- desfecho_asa %>%
+  na.omit() %>%
+  mutate(Desfecho = strsplit(as.character(desfecho), " \\+ ")) %>%
+  unnest(Desfecho)
+
+desfecho_asa$Desfecho <- ifelse(grepl("OUTRO", desfecho_asa$Desfecho, ignore.case = TRUE), "OUTROS", desfecho_asa$Desfecho)
+desfecho_asa$Desfecho <- ifelse(grepl("OUTRA", desfecho_asa$Desfecho, ignore.case = TRUE), "OUTROS", desfecho_asa$Desfecho)
+desfecho_asa$Desfecho <- ifelse(grepl("Sara", desfecho_asa$Desfecho, ignore.case = TRUE), "Sara", desfecho_asa$Desfecho)
+desfecho_asa$Desfecho <- ifelse(grepl("Infeccção profunda de sítio cirúrgico", desfecho_asa$Desfecho, ignore.case = TRUE), "Infeccção profunda de sítio cirúrgico", desfecho_asa$Desfecho)
+desfecho_asa$Desfecho <- ifelse(grepl("Ira", desfecho_asa$Desfecho, ignore.case = TRUE), "Ira", desfecho_asa$Desfecho)
+desfecho_asa$Desfecho <- ifelse(grepl("Não", desfecho_asa$Desfecho, ignore.case = TRUE), "Nenhum", desfecho_asa$Desfecho)
+
+desfecho_asa <- desfecho_asa[,-2]
+
+desfecho_asa$Desfecho <- desfecho_asa$Desfecho %>%
+  str_to_sentence()
+
+xtable(table(desfecho_asa$Desfecho, desfecho_asa$Asa))
+
+# Comorbidade x sofrimento fetal
+
+an1 <- banco_LASOS[, c(9,21)]
+colnames(an1) <- c('Comorbidades', 'Sofrimento fetal')
+an1 <- an1 %>%
+  group_by(`Sofrimento fetal`, Comorbidades) %>%
+  summarise(freq = n()) %>%
+  mutate(freq_relativa = freq %>%
+           percent())
+
+porcentagens <- str_c(an1$freq_relativa , "%") %>% str_replace ("\\.", ",")
+legendas <- str_squish(str_c(an1$freq, " (", porcentagens, ")"))
+
+
+ggplot(an1) +
+  aes(x = `Sofrimento fetal`, y = freq, fill = Comorbidades, label = legendas) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(x = "Sofrimento fetal", y = "Frequência") +
+  geom_text(position = position_fill(vjust = 0.5), size = 3.5, colour = "white") +
+  theme_estat()
+ggsave(filename = file.path(caminho_ana, "sofri_comor.pdf"), width = 158, height = 93, units = "mm")
 
