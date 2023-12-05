@@ -76,7 +76,6 @@ colnames(banco_LASOS)[colnames(banco_LASOS) == "SOFRIMENTO FETAL"] <- "Sofriment
 banco_LASOS$`DIAS NO HOSPITAL` <- as.factor(banco_LASOS$`DIAS NO HOSPITAL`)
 banco_LASOS$`Sofrimento Fetal` <- as.factor(banco_LASOS$`Sofrimento Fetal`)
 
-
 DH_SF <- banco_LASOS %>%
   group_by(`DIAS NO HOSPITAL`, `Sofrimento Fetal`) %>%
   summarise(freq = n()) %>%
@@ -182,3 +181,138 @@ ggplot(URG_IG) +
 ggsave(filename = file.path(caminho_lucas, "colunas-bi-freq-URG_IG-obstetricia.pdf"), width = 158, height = 93, units = "mm")
 
 
+# ANÁLISE 2 
+
+banco_LASOS1 <- read_excel("banco/banco LASOS.xlsx", 
+                           sheet = "LASOS 1 (2)")
+
+# ASA X SEXO
+
+# Exemplo de dados
+banco_LASOS1$ASA <- as.factor(banco_LASOS1$ASA)
+
+# Mapeando os valores
+banco_LASOS1$ASA <- factor(banco_LASOS1$ASA, 
+                           levels = c("I", "II", "III"),
+                           labels = c("Saudáveis", "Doenças brandas", "Patologias mais graves"))
+
+banco_LASOS1 <- rename(banco_LASOS1, Sexo = SEXO)
+
+
+banco_LASOS1$Sexo <- factor(banco_LASOS1$Sexo, 
+                           levels = c("F", "M"),
+                           labels = c("Feminino", "Masculino"))
+
+
+
+asa_sexo <- banco_LASOS1 %>%
+  filter(!is.na(Sexo), !is.na(ASA)) %>% 
+  group_by(ASA, Sexo) %>%
+  summarise(freq = n()) %>%
+  mutate(
+    freq_relativa = freq %>% percent()
+  )
+
+porcentagens <- str_c(asa_sexo$freq_relativa, "%") %>% str_replace("\\.", ",")
+
+legendas <- str_squish(str_c(asa_sexo$freq, " (", porcentagens, ")"))
+
+ggplot(asa_sexo) +
+  aes(
+    x = fct_reorder(ASA, freq, .desc = T),
+    y = freq,
+    fill = Sexo,
+    label = legendas
+  ) +
+  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_text(
+    position = position_dodge(width = .9),
+    vjust = -0.5, hjust = 0.5,
+    size = 3
+  ) +
+  labs(x = "Classificação Pacientes", y = "Frequência") +
+  theme_estat()+
+  scale_y_continuous(limits = c(0, 20))
+
+ggsave(filename = file.path(caminho_lucas, "colunas-bi-freq-asa-sexo-lasos1(2).pdf"), width = 158, height = 93, units = "mm")
+
+
+# ASA X Indicação de Cirurgia 
+
+banco_LASOS1$`INDICAÇÃO DA CIRURGIA` <- gsub("^OUTR[OA].*", "Outro", banco_LASOS1$`INDICAÇÃO DA CIRURGIA`)
+
+banco_LASOS1$`INDICAÇÃO DA CIRURGIA` <- factor(banco_LASOS1$`INDICAÇÃO DA CIRURGIA`, 
+                           levels = c("CÂNCER", "Outro", "INFECÇÃO", "NÃO", "TRAUMA"),
+                           labels = c("Câncer", "Outro", "Infecção", "Não", "Trauma"))
+
+banco_LASOS1 <- rename(banco_LASOS1, "Indicação da Cirurgia" = "INDICAÇÃO DA CIRURGIA")
+
+
+asa_ic <- banco_LASOS1 %>%
+  filter(!is.na(`Indicação da Cirurgia`), !is.na(ASA)) %>% 
+  group_by(`Indicação da Cirurgia`,ASA) %>%
+  summarise(freq = n()) %>%
+  mutate(
+    freq_relativa = freq %>% percent()
+  )
+
+porcentagens <- str_c(asa_ic$freq_relativa, "%") %>% str_replace("\\.", ",")
+
+legendas <- str_squish(str_c(asa_ic$freq, " (", porcentagens, ")"))
+
+ggplot(asa_ic) +
+  aes(
+    x = fct_reorder(ASA, freq, .desc = T),
+    y = freq,
+    fill = `Indicação da Cirurgia`,
+    label = legendas
+  ) +
+  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_text(
+    position = position_dodge(width = .9),
+    vjust = 0.5, hjust = -0.1,
+    size = 3
+  ) +
+  coord_flip()+
+  labs(x = "Classificação Pacientes", y = "Frequência") +
+  theme_estat()+
+  scale_y_continuous(limits = c(0, 20))
+
+ggsave(filename = file.path(caminho_lucas, "colunas-bi-freq-asa-ic-lasos1(2).pdf"), width = 158, height = 93, units = "mm")
+
+ggplot(asa_ic) +
+  aes(
+    x = fct_reorder(ASA, freq, .desc = T),
+    y = freq,
+    fill = `Indicação da Cirurgia`,
+    label = legendas
+  ) +
+  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_text(
+    position = position_dodge(width = .9),
+    vjust = -0.5, hjust = 0.5,
+    size = 3
+  ) +
+  labs(x = "Classificação Pacientes", y = "Frequência") +
+  theme_estat()+
+  scale_y_continuous(limits = c(0, 20))
+
+
+ggplot(asa_ic) +
+  aes(
+    x = fct_reorder(`Indicação da Cirurgia`, freq, .desc = T),
+    y = freq,
+    fill = ASA,
+    label = legendas
+  ) +
+  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_text(
+    position = position_dodge(width = .9),
+    vjust = 0.5, hjust = -0.1,
+    size = 3
+  ) +
+  coord_flip()+
+  labs(x = "Indicação da Cirurgia", y = "Frequência") +
+  theme_estat()+
+  scale_y_continuous(limits = c(0, 20))
+ggsave(filename = file.path(caminho_lucas, "colunas-bi-freq-asa-ic-lasos1(2).pdf"), width = 158, height = 93, units = "mm")
