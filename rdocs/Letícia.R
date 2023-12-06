@@ -148,7 +148,7 @@ cat_limpas <- banco %>%
     CATEGORIA2 == "OUTRO" ~ "OUTROS",
     TRUE ~ as.character(CATEGORIA2)  # Se não houver correspondência, mantenha o valor original
   ))%>%
-  mutate(CATEGORIA2 = str_to_title(CATEGORIA_2))
+  mutate(CATEGORIA_2 = str_to_title(CATEGORIA_2))
 
 #endoscopia vai pra aparelho digestivo ou outros?
 cat_cont <- cat_limpas %>%
@@ -162,7 +162,269 @@ cat_cont <- cat_limpas %>%
     label = str_c(n, " (", freq, ")") %>% str_squish()
   )
 
-tabela_2 <- xtable(cat_cont[, c("n", "freq")])
+tabela_2 <- xtable(cat_cont[, c("CATEGORIA_2","n", "freq")])
 print(tabela_2, include.rownames = FALSE, 
       comment = FALSE, booktabs = TRUE)
+
+
+# ASA X Categoria---------------
+cont_2 <- cat_limpas %>%
+  filter(!is.na(CATEGORIA_2)) %>%
+  filter(!is.na(ASA))%>%
+  group_by(ASA, CATEGORIA_2) %>%
+  summarise(freq = n()) %>%
+  mutate(freq_relativa = freq %>% percent())
+
+porcentagens <- str_c(cont_2$freq_relativa, "%") %>% str_replace("\\.", ",")
+legendas <- str_squish(str_c(cont_2$freq, " (", porcentagens, ")"))
+
+
+
+ggplot(cont_2) +
+  aes(
+    x = fct_reorder(CATEGORIA_2, freq, .desc = T),
+    y = freq,
+    fill = ASA,
+    label = legendas
+  ) +
+  geom_col(position = position_dodge2(preserve = "single", 
+                                      padding = 0)) +
+  geom_text(
+    position = position_dodge(width = 1),
+    vjust = 0.5, hjust = -0.1,
+    size = 2
+  ) +
+  labs(x = "Categorias", y = "Frequência") +
+  theme_estat() +
+  scale_y_continuous(name = "Frequência", limits = c(0, 7)) +
+  coord_flip()
+
+caminho <- "C:\\Git-ESTAT\\PF23055-Henrique-pereira\\resultados\\Letícia"
+ggsave(file.path(caminho,"asa_cat.pdf")
+       , width = 158, height = 93, units = "mm")
+
+
+cont_table <- table(cat_limpas$ASA, cat_limpas$CATEGORIA_2)
+chi_square_test <- chisq.test(cont_table)
+cramer_v <- sqrt(chi_square_test$statistic / sum(cont_table) * (min(dim(cont_table)) - 1))
+cat("Coeficiente V de Cramér:", cramer_v)
+
+
+#ASA X TABAGISMO --------------------
+
+cont_3 <- cat_limpas %>%
+  filter(!is.na(`TABAGISTA ATUAL`)) %>%
+  filter(!is.na(ASA))%>%
+  group_by(ASA, `TABAGISTA ATUAL`) %>%
+  summarise(freq = n()) %>%
+  mutate(freq_relativa = freq %>% percent())
+
+porcentagens <- str_c(cont_3$freq_relativa, "%") %>% str_replace("\\.", ",")
+legendas <- str_squish(str_c(cont_3$freq, " (", porcentagens, ")"))
+
+
+
+ggplot(cont_3) +
+  aes(
+    x = fct_reorder(`TABAGISTA ATUAL`, freq, .desc = T),
+    y = freq,
+    fill = ASA,
+    label = legendas
+  ) +
+  geom_col(position = position_dodge2(preserve = "single",
+                                      padding = 0),width = .9) +
+  geom_text(
+    aes(y= ifelse(ASA == "Sim", freq, freq+0.2)),
+    position = position_dodge(width = .85),
+    vjust = -0.5, hjust = 0.5,
+    size = 2.8
+  ) +
+  labs(x = "Tabagismo", y = "Frequência") +
+  theme_estat() +
+  scale_y_continuous(name = "Frequência", limits = c(0, 25)) +
+  scale_x_discrete(labels = c("Não", "Sim"))
+  #+coord_flip()
+
+caminho <- "C:\\Git-ESTAT\\PF23055-Henrique-pereira\\resultados\\Letícia"
+ggsave(file.path(caminho,"asa_tab.pdf")
+       , width = 158, height = 93, units = "mm")
+
+
+cont_table <- table(cat_limpas$ASA, cat_limpas$`TABAGISTA ATUAL`)
+chi_square_test <- chisq.test(cont_table)
+cramer_v <- sqrt(chi_square_test$statistic / sum(cont_table) * (min(dim(cont_table)) - 1))
+cat("Coeficiente V de Cramér:", cramer_v)
+
+
+# Categoria X Indicação de cirurgia---------
+
+#observando o que preciso mudar
+classes_3 <- cat_limpas %>%
+  filter(!is.na(`INDICAÇÃO DA CIRURGIA`)) %>%
+  count(`INDICAÇÃO DA CIRURGIA`) %>%
+  mutate(
+    freq = n %>% percent(),
+  ) %>%
+  mutate(
+    freq = gsub("\\.", ",", freq) %>% paste("%", sep = ""),
+    label = str_c(n, " (", freq, ")") %>% str_squish()
+  )
+
+ind_limpas <- cat_limpas %>%
+  mutate(`INDICAÇÃO DA CIRURGIA` = ifelse(grepl("Outro|Outros|Outra",
+                                                `INDICAÇÃO DA CIRURGIA`, 
+                                                ignore.case = TRUE), "Outras", 
+                                          `INDICAÇÃO DA CIRURGIA`))%>%
+  mutate(`INDICAÇÃO DA CIRURGIA` = str_to_title(`INDICAÇÃO DA CIRURGIA`))
+
+ind_limpas <- ind_limpas %>%
+filter(!grepl("Não", `INDICAÇÃO DA CIRURGIA`, ignore.case = TRUE))
+#verificando
+
+classes_3 <- ind_limpas %>%
+  filter(!is.na(`INDICAÇÃO DA CIRURGIA`)) %>%
+  count(`INDICAÇÃO DA CIRURGIA`) %>%
+  mutate(
+    freq = n %>% percent(),
+  ) %>%
+  mutate(
+    freq = gsub("\\.", ",", freq) %>% paste("%", sep = ""),
+    label = str_c(n, " (", freq, ")") %>% str_squish()
+  )
+
+cont_3 <- ind_limpas %>%
+  filter(!is.na(`INDICAÇÃO DA CIRURGIA`)) %>%
+  filter(!is.na(CATEGORIA_2))%>% #n fez diferença, apenas um NA
+  group_by(CATEGORIA_2, `INDICAÇÃO DA CIRURGIA`) %>%
+  summarise(freq = n()) %>%
+  mutate(freq_relativa = freq %>% percent())
+
+cont_3 <- cont_3 %>%
+  mutate(CATEGORIA_2 = str_replace(CATEGORIA_2, " E ", " e "))
+
+porcentagens <- str_c(cont_3$freq_relativa, "%") %>% str_replace("\\.", ",")
+legendas <- str_squish(str_c(cont_3$freq, " (", porcentagens, ")"))
+
+
+
+ggplot(cont_3) +
+  aes(
+    x = fct_reorder(`CATEGORIA_2`, freq, .desc = T),
+    y = freq,
+    fill = `INDICAÇÃO DA CIRURGIA`,
+    label = legendas
+  ) +
+  geom_col(position = position_dodge2(preserve = "single",
+                                      padding = 0),width = .9) +
+  geom_text(
+    position = position_dodge(width = .85),
+    vjust = 0.3, hjust = -0.4,
+    size = 2.15
+  ) +
+  labs(x = "Categorias Cirúrgicas", y = "Frequência",
+       fill = "Indicação da Cirurgia") +
+  theme_estat() +
+  scale_y_continuous(name = "Frequência", limits = c(0, 8)) +
+coord_flip()
+
+caminho <- "C:\\Git-ESTAT\\PF23055-Henrique-pereira\\resultados\\Letícia"
+ggsave(file.path(caminho,"cat_ind.pdf")
+       , width = 158, height = 93, units = "mm")
+
+
+cont_table <- table(ind_limpas$CATEGORIA_2, 
+                    ind_limpas$`INDICAÇÃO DA CIRURGIA`)
+chi_square_test <- chisq.test(cont_table)
+cramer_v <- sqrt(chi_square_test$statistic / sum(cont_table) * (min(dim(cont_table)) - 1))
+cat("Coeficiente V de Cramér:", cramer_v)
+
+install.packages(rcompanion)
+library(rcompanion)
+cramerV(cont_table)
+
+# severidade X HB: (let)----------------------
+# gráfico de colunas empilhada, onde as cores se referem à severidade e o eixo X 
+#se refere ao HB (pode separar o HB por intervalos pela quantidade de valores diferentes)
+
+
+hb_limpas <- ind_limpas %>%
+  mutate(HB = ifelse(HB == "NÃO", NA, HB)) %>%
+  filter(!is.na(`HB`))%>%
+  mutate(`ASA` = str_to_title(`SEVERIDADE`))
+
+
+
+teste <- data.frame(HB = c(13.4, 13.2, 15.3, 12.9, 16.4, 
+                           12.3, 9.1, 8.5, 14.9, 13.1, 
+                           12.6,12.6, 9.9, 15.0, 12.1, 
+                           12.7, 10.7, 12.6, 10.8, 13.5, 
+                           14.0, 12.9,13.2, 12.8, 13.6,
+                           11.2, 12.8, 14.8, 9.9, 9.8, 
+                           14.0, 17.2, 12.4))
+
+limites <- seq(8, 18, by = 3)
+teste$Intervalo <- paste0(limites[findInterval(teste$HB, limites)], " a ", limites[findInterval(teste$HB, limites)] + 2)
+
+print(teste) #ok deu certo 
+
+
+hb_sev <- cbind(hb_limpas, teste["Intervalo"])
+
+
+#HB e asa----------------------------
+
+#gráfico 
+
+cont_empilhado <- hb_sev %>%
+  group_by(`Intervalo`, ASA) %>%
+  summarise(freq = n()) %>%
+  mutate(freq_relativa = freq %>%
+           percent())
+
+porcentagens <- str_c(cont_empilhado$freq_relativa , "%") %>% str_replace ("\\.", ",")
+legendas <- str_squish(str_c(cont_empilhado$freq, " (", porcentagens, ")"))
+
+
+ggplot(cont_empilhado) +
+  aes(x = `Intervalo`, y = freq, fill = ASA, label = legendas) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(x = "Nível de hemoglobina (em g/dl)", y = "Frequência") +
+  geom_text(position = position_fill(vjust = 0.5), size = 3.5,
+            colour = "white") +
+  theme_estat()
+caminho <- "C:\\Git-ESTAT\\PF23055-Henrique-pereira\\resultados\\Letícia"
+ggsave(file.path(caminho,"hb_sev.pdf")
+       , width = 158, height = 93, units = "mm")
+
+
+
+#asa x hb
+
+#acredito que não preciso fazer uma nova manpulação, por conta do HB. só temos 33 observações numericas de HB
+#as outras são 'NÃO", entçao novamente o total de obs vai ser 33, o ASA só possui um NA
+
+
+#gráfico 
+
+cont_empilhado_2 <- hb_sev %>%
+  group_by(`Intervalo`, ASA) %>%
+  summarise(freq = n()) %>%
+  mutate(freq_relativa = freq %>%
+           percent())
+
+porcentagens <- str_c(cont_empilhado_2$freq_relativa , "%") %>% str_replace ("\\.", ",")
+legendas <- str_squish(str_c(cont_empilhado_2$freq, " (", porcentagens, ")"))
+
+
+ggplot(cont_empilhado_2) +
+  aes(x = `Intervalo`, y = freq, fill = ASA, label = legendas) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(x = "Nível de hemoglobina (em g/dl)", y = "Frequência") +
+  geom_text(position = position_fill(vjust = 0.5), size = 3.5,
+            colour = "white") +
+  theme_estat()
+caminho <- "C:\\Git-ESTAT\\PF23055-Henrique-pereira\\resultados\\Letícia"
+ggsave(file.path(caminho,"hb_asa.pdf")
+       , width = 158, height = 93, units = "mm")
+
 
