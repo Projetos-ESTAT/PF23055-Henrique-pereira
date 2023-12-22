@@ -140,7 +140,7 @@ ggsave(file.path(caminho,"comorbidades.pdf")
 #Categoria (let) ------------------
 
 cat_limpas <- banco %>%
-  mutate(CATEGORIA_2 = case_when(
+  mutate(`DIAS NO HOSPITAL` = case_when(
     CATEGORIA2 ==  "APARELHO DIGESTIVO (BAIXO)" ~ "APARELHO DIGESTIVO",
     CATEGORIA2 == "APARELHO DIGESTIVO (ALTO)" ~ "APARELHO DIGESTIVO",
     CATEGORIA2 == "OUTRA (ENDOSCOPIA)" ~ "OUTROS",
@@ -148,12 +148,12 @@ cat_limpas <- banco %>%
     CATEGORIA2 == "OUTRO" ~ "OUTROS",
     TRUE ~ as.character(CATEGORIA2)  # Se não houver correspondência, mantenha o valor original
   ))%>%
-  mutate(CATEGORIA_2 = str_to_title(CATEGORIA_2))
+  mutate(`DIAS NO HOSPITAL` = str_to_title(`DIAS NO HOSPITAL`))
 
 #endoscopia vai pra aparelho digestivo ou outros?
 cat_cont <- cat_limpas %>%
-  filter(!is.na(CATEGORIA_2)) %>%
-  count(CATEGORIA_2) %>%
+  filter(!is.na(`DIAS NO HOSPITAL`)) %>%
+  count(`DIAS NO HOSPITAL`) %>%
   mutate(
     freq = n %>% percent(),
   ) %>%
@@ -162,16 +162,16 @@ cat_cont <- cat_limpas %>%
     label = str_c(n, " (", freq, ")") %>% str_squish()
   )
 
-tabela_2 <- xtable(cat_cont[, c("CATEGORIA_2","n", "freq")])
+tabela_2 <- xtable(cat_cont[, c("`DIAS NO HOSPITAL`","n", "freq")])
 print(tabela_2, include.rownames = FALSE, 
       comment = FALSE, booktabs = TRUE)
 
 
 # ASA X Categoria---------------
 cont_2 <- cat_limpas %>%
-  filter(!is.na(CATEGORIA_2)) %>%
+  filter(!is.na(`DIAS NO HOSPITAL`)) %>%
   filter(!is.na(ASA))%>%
-  group_by(ASA, CATEGORIA_2) %>%
+  group_by(`DIAS NO HOSPITAL`,ASA) %>%
   summarise(freq = n()) %>%
   mutate(freq_relativa = freq %>% percent())
 
@@ -182,7 +182,7 @@ legendas <- str_squish(str_c(cont_2$freq, " (", porcentagens, ")"))
 
 ggplot(cont_2) +
   aes(
-    x = fct_reorder(CATEGORIA_2, freq, .desc = T),
+    x = fct_reorder(`DIAS NO HOSPITAL`, freq, .desc = T),
     y = freq,
     fill = ASA,
     label = legendas
@@ -204,7 +204,7 @@ ggsave(file.path(caminho,"asa_cat.pdf")
        , width = 158, height = 93, units = "mm")
 
 
-cont_table <- table(cat_limpas$ASA, cat_limpas$CATEGORIA_2)
+cont_table <- table(cat_limpas$ASA, cat_limpas$`DIAS NO HOSPITAL`)
 chi_square_test <- chisq.test(cont_table)
 cramer_v <- sqrt(chi_square_test$statistic / sum(cont_table) * (min(dim(cont_table)) - 1))
 cat("Coeficiente V de Cramér:", cramer_v)
@@ -215,7 +215,7 @@ cat("Coeficiente V de Cramér:", cramer_v)
 cont_3 <- cat_limpas %>%
   filter(!is.na(`TABAGISTA ATUAL`)) %>%
   filter(!is.na(ASA))%>%
-  group_by(ASA, `TABAGISTA ATUAL`) %>%
+  group_by(`TABAGISTA ATUAL`,ASA) %>%
   summarise(freq = n()) %>%
   mutate(freq_relativa = freq %>% percent())
 
@@ -294,13 +294,13 @@ classes_3 <- ind_limpas %>%
 
 cont_3 <- ind_limpas %>%
   filter(!is.na(`INDICAÇÃO DA CIRURGIA`)) %>%
-  filter(!is.na(CATEGORIA_2))%>% #n fez diferença, apenas um NA
-  group_by(CATEGORIA_2, `INDICAÇÃO DA CIRURGIA`) %>%
+  filter(!is.na(`DIAS NO HOSPITAL`))%>% #n fez diferença, apenas um NA
+  group_by(`DIAS NO HOSPITAL`, `INDICAÇÃO DA CIRURGIA`) %>%
   summarise(freq = n()) %>%
   mutate(freq_relativa = freq %>% percent())
 
 cont_3 <- cont_3 %>%
-  mutate(CATEGORIA_2 = str_replace(CATEGORIA_2, " E ", " e "))
+  mutate(`DIAS NO HOSPITAL` = str_replace(`DIAS NO HOSPITAL`, " E ", " e "))
 
 porcentagens <- str_c(cont_3$freq_relativa, "%") %>% str_replace("\\.", ",")
 legendas <- str_squish(str_c(cont_3$freq, " (", porcentagens, ")"))
@@ -309,7 +309,7 @@ legendas <- str_squish(str_c(cont_3$freq, " (", porcentagens, ")"))
 
 ggplot(cont_3) +
   aes(
-    x = fct_reorder(`CATEGORIA_2`, freq, .desc = T),
+    x = fct_reorder(``DIAS NO HOSPITAL``, freq, .desc = T),
     y = freq,
     fill = `INDICAÇÃO DA CIRURGIA`,
     label = legendas
@@ -332,7 +332,7 @@ ggsave(file.path(caminho,"cat_ind.pdf")
        , width = 158, height = 93, units = "mm")
 
 
-cont_table <- table(ind_limpas$CATEGORIA_2, 
+cont_table <- table(ind_limpas$`DIAS NO HOSPITAL`, 
                     ind_limpas$`INDICAÇÃO DA CIRURGIA`)
 chi_square_test <- chisq.test(cont_table)
 cramer_v <- sqrt(chi_square_test$statistic / sum(cont_table) * (min(dim(cont_table)) - 1))
@@ -350,7 +350,7 @@ cramerV(cont_table)
 hb_limpas <- ind_limpas %>%
   mutate(HB = ifelse(HB == "NÃO", NA, HB)) %>%
   filter(!is.na(`HB`))%>%
-  mutate(`ASA` = str_to_title(`SEVERIDADE`))
+  mutate(`Severidade` = str_to_title(`SEVERIDADE`))
 
 
 
@@ -376,7 +376,7 @@ hb_sev <- cbind(hb_limpas, teste["Intervalo"])
 #gráfico 
 
 cont_empilhado <- hb_sev %>%
-  group_by(`Intervalo`, ASA) %>%
+  group_by(`Intervalo`, Severidade) %>%
   summarise(freq = n()) %>%
   mutate(freq_relativa = freq %>%
            percent())
@@ -386,7 +386,7 @@ legendas <- str_squish(str_c(cont_empilhado$freq, " (", porcentagens, ")"))
 
 
 ggplot(cont_empilhado) +
-  aes(x = `Intervalo`, y = freq, fill = ASA, label = legendas) +
+  aes(x = `Intervalo`, y = freq, fill = Severidade, label = legendas) +
   geom_bar(stat = "identity", position = "fill") +
   labs(x = "Nível de hemoglobina (em g/dl)", y = "Frequência") +
   geom_text(position = position_fill(vjust = 0.5), size = 3.5,
@@ -398,7 +398,7 @@ ggsave(file.path(caminho,"hb_sev.pdf")
 
 
 
-#asa x hb
+#asa x hb--------------------------
 
 #acredito que não preciso fazer uma nova manpulação, por conta do HB. só temos 33 observações numericas de HB
 #as outras são 'NÃO", entçao novamente o total de obs vai ser 33, o ASA só possui um NA
@@ -428,3 +428,45 @@ ggsave(file.path(caminho,"hb_asa.pdf")
        , width = 158, height = 93, units = "mm")
 
 
+#diasnohospitalxtipodeanestesia------------------
+
+banco <- banco %>%
+  mutate(ANESTESIA = ifelse(grepl("GERAL +", ANESTESIA), 
+                            "Geral + Outra", ANESTESIA)) %>%
+  mutate(ANESTESIA = str_to_title(ANESTESIA))
+
+banco <- banco %>%
+  mutate(`DIAS NO HOSPITAL` = ifelse(`DIAS NO HOSPITAL` < 10, "Até 10 dias", "Mais de 10 dias"))
+
+cont_dias <- banco %>%
+  filter(!is.na(`DIAS NO HOSPITAL`)) %>%
+  filter(!is.na(ANESTESIA))%>%
+  group_by(`DIAS NO HOSPITAL`,ANESTESIA) %>%
+  summarise(freq = n()) %>%
+  mutate(freq_relativa = freq %>% percent())
+
+porcentagens <- str_c(cont_dias$freq_relativa, "%") %>% str_replace("\\.", ",")
+legendas <- str_squish(str_c(cont_dias$freq, " (", porcentagens, ")"))
+
+
+
+ggplot(cont_dias) +
+  aes(
+    x = fct_reorder(`DIAS NO HOSPITAL`, freq, .desc = T),
+    y = freq,
+    fill = ANESTESIA,
+    label = legendas
+  ) +
+  geom_col(position = position_dodge2(preserve = "single", 
+                                      padding = 0)) +
+  geom_text(
+    position = position_dodge(width = 1),
+    vjust = -0.5, hjust = 0.5,
+    size = 2
+  ) +
+  labs(x = "Tipos de anestesia", y = "Frequência") +
+  theme_estat()
+
+caminho <- "C:\\Git-ESTAT\\PF23055-Henrique-pereira\\resultados\\Letícia"
+ggsave(file.path(caminho,"ANESTESIA_cat.pdf")
+       , width = 158, height = 93, units = "mm")
