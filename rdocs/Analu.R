@@ -45,7 +45,7 @@ quantile(banco_LASOS$IDADE, 0.25)
 
 quantile(banco_LASOS$IDADE, 0.75)
 
-sd(banco_LASOS$IDADE)
+sd(banco_LASOS$IDADE
 
 # Urgência X Sofrimento fetal
 
@@ -236,12 +236,24 @@ desfecho_asa <- desfecho_asa[,-2]
 desfecho_asa$Desfecho <- desfecho_asa$Desfecho %>%
   str_to_sentence()
 
+desfecho_asa <- desfecho_asa %>%
+  filter(Desfecho != "Nenhum")
+
 xtable(table(desfecho_asa$Desfecho, desfecho_asa$Asa))
+
+cont_table <- table(desfecho_asa$Desfecho, desfecho_asa$Asa)
+chi_square_test <- chisq.test(cont_table)
+sqrt(chi_square_test$statistic / sum(cont_table) * (min(dim(cont_table)) - 1))
 
 # Comorbidade x sofrimento fetal
 
 an1 <- banco_LASOS[, c(9,21)]
 colnames(an1) <- c('Comorbidades', 'Sofrimento fetal')
+
+cont_table <- table(an1$`Sofrimento fetal`, an1$Comorbidades)
+chi_square_test <- chisq.test(cont_table)
+sqrt(chi_square_test$statistic / sum(cont_table) * (min(dim(cont_table)) - 1))
+
 an1 <- an1 %>%
   group_by(`Sofrimento fetal`, Comorbidades) %>%
   summarise(freq = n()) %>%
@@ -260,3 +272,48 @@ ggplot(an1) +
   theme_estat()
 ggsave(filename = file.path(caminho_ana, "sofri_comor.pdf"), width = 158, height = 93, units = "mm")
 
+# Desfecho x HB
+
+desfecho_HB <- banco_LASOS2[, c(12,25)]
+
+colnames(desfecho_HB) <- c('HB', 'Desfecho')
+
+desfecho_HB$HB <- as.numeric(desfecho_HB$HB)
+
+desfecho_HB$Desfecho <- ifelse(grepl("OUTRO", desfecho_HB$Desfecho, ignore.case = TRUE), "Outros", desfecho_HB$Desfecho)
+desfecho_HB$Desfecho <- ifelse(grepl("OUTRA", desfecho_HB$Desfecho, ignore.case = TRUE), "Outros", desfecho_HB$Desfecho)
+desfecho_HB$Desfecho <- ifelse(grepl("Sara", desfecho_HB$Desfecho, ignore.case = TRUE), "Sara", desfecho_HB$Desfecho)
+desfecho_HB$Desfecho <- ifelse(grepl("Infeccção profunda de sítio cirúrgico", desfecho_HB$Desfecho, ignore.case = TRUE), "Infeccção profunda de sítio cirúrgico", desfecho_HB$Desfecho)
+desfecho_HB$Desfecho <- ifelse(grepl("Ira", desfecho_HB$Desfecho, ignore.case = TRUE), "Ira", desfecho_HB$Desfecho)
+desfecho_HB$Desfecho <- ifelse(grepl("Não", desfecho_HB$Desfecho, ignore.case = TRUE), "Nenhum", desfecho_HB$Desfecho)
+desfecho_HB$Desfecho <- ifelse(grepl("Nenhum", desfecho_HB$Desfecho, ignore.case = TRUE), "Nenhum", desfecho_HB$Desfecho)
+
+desfecho_HB <- desfecho_HB %>%
+  filter(HB != "NÃO")
+
+modelo <-lm(desfecho_HB$HB ~ desfecho_HB$Desfecho)
+summary(modelo)$r.squared
+
+library(summarytools)
+
+desc_stats <- desfecho_HB %>%
+  group_by(Desfecho) %>%
+  summarise(Media = mean(HB),
+            S = sd(HB),
+            Minimo = min(HB),
+            Q1 = quantile(HB, 0.25),
+            Mediana = median(HB),
+            Q3 = quantile(HB, 0.75),
+            Maximo = max(HB),
+)
+
+desc_stats <- desc_stats %>%
+  pivot_longer(
+    cols = c(Media, S, Minimo, Q1, Mediana, Q3, Maximo),
+    names_to = "Medidas",
+    values_to = "Valores"
+  )
+
+desc_stats <- t(desc_stats)
+
+xtable(table(desc_stats))
